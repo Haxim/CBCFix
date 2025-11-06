@@ -8,7 +8,7 @@ Simply add `OH` before `cbc.ca` in any URL:
 
 ```
 Original: https://www.cbc.ca/news/canada/article-1.123456
-Fixed:    https://www.ddcbc.ca/news/canada/article-1.123456
+Fixed:    https://www.ohcbc.ca/news/canada/article-1.123456
 ```
 
 The service will redirect to an embeddable player/viewer for that CBC content.
