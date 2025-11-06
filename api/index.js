@@ -26,7 +26,7 @@ module.exports = async (req, res) => {
     const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
     if (titleMatch) title = titleMatch[1].trim();
     
-    // Extract og:description or description (try multiple sources)
+    // Extract description - try multiple patterns
     let descMatch = null;
     
     // Pattern 1: data-rh with name="description"
@@ -56,9 +56,18 @@ module.exports = async (req, res) => {
     }
     
     // Extract og:image
-    const imgMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) ||
-                     html.match(/<meta[^>]*property=["']twitter:image["'][^>]*content=["']([^"']+)["']/i);
-    if (imgMatch) image = imgMatch[1].trim();
+    const imgMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/is);
+    if (!imgMatch) {
+      const twitterImgMatch = html.match(/<meta[^>]*property=["']twitter:image["'][^>]*content=["']([^"']+)["']/is);
+      if (twitterImgMatch) image = twitterImgMatch[1].trim();
+    } else {
+      image = imgMatch[1].trim();
+    }
+    
+    // Debug logging
+    console.log('Extracted - Title:', title);
+    console.log('Extracted - Description:', description);
+    console.log('Extracted - Image:', image);
   } catch (error) {
     console.error('Error fetching CBC page:', error);
   }
@@ -75,6 +84,7 @@ function generateEmbedPage(cbcUrl, urlPath, title, description, image) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
   <meta name="description" content="${description}">
+  <link rel="canonical" href="${cbcUrl}">
   
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="article">
@@ -89,6 +99,9 @@ function generateEmbedPage(cbcUrl, urlPath, title, description, image) {
   <meta property="twitter:title" content="${title}">
   <meta property="twitter:description" content="${description}">
   <meta property="twitter:image" content="${image}">
+  
+  <!-- Redirect meta tag -->
+  <meta http-equiv="refresh" content="0;url=${cbcUrl}">
   
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
