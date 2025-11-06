@@ -13,9 +13,22 @@ module.exports = async (req, res) => {
   
   const cbcUrl = 'https://www.cbc.ca' + urlPath;
   
-  // Fetch the original CBC page to extract meta tags
-  let title = 'CBC News Article';
-  let description = 'View this CBC News article';
+  // Check if this is a video player URL
+  const isVideoPlayer = urlPath.startsWith('/player/');
+  
+  // Check if user agent is a bot
+  const userAgent = req.headers['user-agent'] || '';
+  const isBot = /bot|crawler|spider|crawling|facebook|twitter|discord|slack|telegram|whatsapp|linkedinbot/i.test(userAgent);
+  
+  // If it's a real user (not a bot), redirect to CBC
+  if (!isBot) {
+    res.writeHead(302, { Location: cbcUrl });
+    return res.end();
+  }
+  
+  // If it's a bot, fetch the original CBC page to extract meta tags
+  let title = 'CBC News';
+  let description = 'View this CBC ' + (isVideoPlayer ? 'video' : 'article');
   let image = 'https://www.cbc.ca/favicon.ico';
   
   try {
@@ -73,10 +86,26 @@ module.exports = async (req, res) => {
   }
   
   res.setHeader('Content-Type', 'text/html');
-  res.send(generateEmbedPage(cbcUrl, urlPath, title, description, image));
+  res.send(generateEmbedPage(cbcUrl, urlPath, title, description, image, isVideoPlayer));
 };
 
-function generateEmbedPage(cbcUrl, urlPath, title, description, image) {
+function generateEmbedPage(cbcUrl, urlPath, title, description, image, isVideoPlayer = false) {
+  // For video player URLs, use video meta tags
+  const metaType = isVideoPlayer ? 'video.other' : 'article';
+  const twitterCard = isVideoPlayer ? 'player' : 'summary_large_image';
+  
+  // For video players, add video-specific meta tags
+  const videoPlayerHtml = isVideoPlayer ? `
+    <meta property="twitter:player" content="${cbcUrl}">
+    <meta property="twitter:player:width" content="1280">
+    <meta property="twitter:player:height" content="720">
+    <meta property="og:video" content="${cbcUrl}">
+    <meta property="og:video:secure_url" content="${cbcUrl}">
+    <meta property="og:video:type" content="text/html">
+    <meta property="og:video:width" content="1280">
+    <meta property="og:video:height" content="720">
+  ` : '';
+  
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -87,14 +116,15 @@ function generateEmbedPage(cbcUrl, urlPath, title, description, image) {
   <link rel="canonical" href="${cbcUrl}">
   
   <!-- Open Graph / Facebook -->
-  <meta property="og:type" content="article">
+  <meta property="og:type" content="${metaType}">
   <meta property="og:url" content="${cbcUrl}">
   <meta property="og:title" content="${title}">
   <meta property="og:description" content="${description}">
   <meta property="og:image" content="${image}">
+  ${videoPlayerHtml}
   
   <!-- Twitter -->
-  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:card" content="${twitterCard}">
   <meta property="twitter:url" content="${cbcUrl}">
   <meta property="twitter:title" content="${title}">
   <meta property="twitter:description" content="${description}">
@@ -116,7 +146,7 @@ function generateEmbedPage(cbcUrl, urlPath, title, description, image) {
 </head>
 <body>
   <div class="header">
-    <div class="logo"><span>CBC</span>Fix</div>
+    <div class="logo"><span>OH</span>CBC</div>
     <div class="actions">
       <a href="${cbcUrl}" target="_blank" class="btn">Open Original</a>
       <button onclick="copyEmbed()" class="btn">Copy Embed Code</button>
@@ -128,11 +158,6 @@ function generateEmbedPage(cbcUrl, urlPath, title, description, image) {
     </div>
   </div>
   <script>
-    // Redirect real users to CBC, but let bots scrape the metadata
-    if (!/bot|crawler|spider|crawling/i.test(navigator.userAgent)) {
-      window.location.href = '${cbcUrl}';
-    }
-    
     function copyEmbed() {
       const embedCode = '<iframe src="' + window.location.href + '" width="100%" height="600" frameborder="0" allowfullscreen></iframe>';
       navigator.clipboard.writeText(embedCode).then(() => { alert('Embed code copied!'); });
