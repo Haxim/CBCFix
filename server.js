@@ -34,20 +34,20 @@ function generateEmbedPage(cbcUrl, urlPath) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DDCBC - ${urlPath}</title>
+  <title>OHCBC - ${urlPath}</title>
   <meta name="description" content="View this CBC News article">
   
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="article">
   <meta property="og:url" content="${cbcUrl}">
-  <meta property="og:title" content="DDCBC - ${urlPath}">
+  <meta property="og:title" content=OHDCBC - ${urlPath}">
   <meta property="og:description" content="View this CBC News article">
   <meta property="og:image" content="https://www.cbc.ca/favicon.ico">
   
   <!-- Twitter -->
   <meta property="twitter:card" content="summary_large_image">
   <meta property="twitter:url" content="${cbcUrl}">
-  <meta property="twitter:title" content="DDCBC - ${urlPath}">
+  <meta property="twitter:title" content="OHCBC - ${urlPath}">
   <meta property="twitter:description" content="View this CBC News article">
   <meta property="twitter:image" content="https://www.cbc.ca/favicon.ico">
   
