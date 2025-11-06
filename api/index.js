@@ -31,6 +31,7 @@ module.exports = async (req, res) => {
   let description = 'View this CBC ' + (isVideoPlayer ? 'video' : 'article');
   let image = 'https://www.cbc.ca/favicon.ico';
   let videoUrl = null;
+  let publishedTime = null;
   
   try {
     const response = await fetch(cbcUrl);
@@ -158,20 +159,71 @@ module.exports = async (req, res) => {
       console.log('Extracted video URL:', videoUrl);
     }
     
+    // Extract publication date/time
+    // Try multiple patterns for publication date
+    let dateMatch = null;
+    
+    // Pattern 1: article:published_time (Open Graph)
+    dateMatch = html.match(/<meta[^>]*property=["']article:published_time["'][^>]*content=["']([^"']+)["']/is);
+    if (dateMatch) {
+      publishedTime = dateMatch[1].trim();
+    }
+    
+    // Pattern 2: datePublished in JSON-LD
+    if (!publishedTime && jsonLdMatch) {
+      try {
+        const jsonData = JSON.parse(jsonLdMatch[1]);
+        if (jsonData['@graph'] && Array.isArray(jsonData['@graph'])) {
+          for (const item of jsonData['@graph']) {
+            if (item.datePublished) {
+              publishedTime = item.datePublished;
+              break;
+            }
+          }
+        } else if (jsonData.datePublished) {
+          publishedTime = jsonData.datePublished;
+        }
+      } catch (e) {
+        // Already logged above
+      }
+    }
+    
+    // Pattern 3: datePublished in a separate JSON-LD script
+    if (!publishedTime) {
+      const allJsonLd = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([^<]+)<\/script>/gis);
+      if (allJsonLd) {
+        for (const match of allJsonLd) {
+          const jsonContent = match.match(/>([^<]+)</s);
+          if (jsonContent) {
+            try {
+              const jsonData = JSON.parse(jsonContent[1]);
+              if (jsonData.datePublished) {
+                publishedTime = jsonData.datePublished;
+                break;
+              }
+            } catch (e) {
+              // Skip invalid JSON
+            }
+          }
+        }
+      }
+    }
+    
     // Debug logging
     console.log('CBC URL:', cbcUrl);
     console.log('Extracted - Title:', title);
     console.log('Extracted - Description:', description);
     console.log('Extracted - Image:', image);
+    console.log('Extracted - Published Time:', publishedTime);
   } catch (error) {
     console.error('Error fetching CBC page:', error);
   }
   
   res.setHeader('Content-Type', 'text/html');
-  res.send(generateEmbedPage(cbcUrl, urlPath, title, description, image, isVideoPlayer, videoUrl));
+  res.send(generateEmbedPage(cbcUrl, urlPath, title, description, image, isVideoPlayer, videoUrl, publishedTime));
 };
 
-function generateEmbedPage(cbcUrl, urlPath, title, description, image, isVideoPlayer = false, videoUrl = null) {
+function generateEmbedPage(cbcUrl, urlPath, title, description, image, isVideoPlayer = false, videoUrl = null, publishedTime = null) {
   // Escape HTML entities in meta tags to prevent XSS
   const escapeHtml = (str) => {
     return str
@@ -202,6 +254,14 @@ function generateEmbedPage(cbcUrl, urlPath, title, description, image, isVideoPl
     <meta name="twitter:player:stream:content_type" content="${videoUrl.endsWith('.mp4') ? 'video/mp4' : 'application/x-mpegURL'}">
   ` : '';
   
+  // Add published time meta tags if available
+  const publishedTimeHtml = publishedTime ? `
+    <meta property="article:published_time" content="${escapeHtml(publishedTime)}">
+  ` : '';
+  
+  // Use CBC's official logo URL for Discord embeds
+  const cbcLogoUrl = 'https://www.cbc.ca/static_images/cbc-logo.png';
+  
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -210,6 +270,7 @@ function generateEmbedPage(cbcUrl, urlPath, title, description, image, isVideoPl
   <title>${safeTitle}</title>
   <meta name="description" content="${safeDescription}">
   <link rel="canonical" href="${safeCbcUrl}">
+  <link rel="icon" href="${cbcLogoUrl}">
   
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="${metaType}">
@@ -217,6 +278,8 @@ function generateEmbedPage(cbcUrl, urlPath, title, description, image, isVideoPl
   <meta property="og:title" content="${safeTitle}">
   <meta property="og:description" content="${safeDescription}">
   <meta property="og:image" content="${safeImage}">
+  <meta property="og:site_name" content="CBC">
+  ${publishedTimeHtml}
   ${videoPlayerHtml}
   
   <!-- Twitter -->
@@ -225,6 +288,8 @@ function generateEmbedPage(cbcUrl, urlPath, title, description, image, isVideoPl
   <meta property="twitter:title" content="${safeTitle}">
   <meta property="twitter:description" content="${safeDescription}">
   <meta property="twitter:image" content="${safeImage}">
+  <meta property="twitter:site" content="@CBC">
+  <meta property="twitter:creator" content="@CBC">
   
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
