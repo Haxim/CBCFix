@@ -27,11 +27,26 @@ module.exports = async (req, res) => {
     if (titleMatch) title = titleMatch[1].trim();
     
     // Extract og:description or description (try multiple sources)
-    const descMatch = html.match(/<meta[^>]*data-rh=["']true["'][^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i) ||
-                      html.match(/<meta[^>]*name=["']description["'][^>]*data-rh=["']true["'][^>]*content=["']([^"']+)["']/i) ||
-                      html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i) ||
-                      html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i) ||
-                      html.match(/<meta[^>]*property=["']twitter:description["'][^>]*content=["']([^"']+)["']/i);
+    let descMatch = null;
+    
+    // Pattern 1: data-rh with name="description"
+    descMatch = html.match(/<meta[^>]*data-rh=["']true["'][^>]*name=["']description["'][^>]*content=["']([^"']+)["']/is);
+    
+    if (!descMatch) {
+      // Pattern 2: name="description" with data-rh (reversed order)
+      descMatch = html.match(/<meta[^>]*name=["']description["'][^>]*data-rh=["']true["'][^>]*content=["']([^"']+)["']/is);
+    }
+    
+    if (!descMatch) {
+      // Pattern 3: just name="description" with content
+      descMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/is);
+    }
+    
+    if (!descMatch) {
+      // Pattern 4: og:description
+      descMatch = html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/is);
+    }
+    
     if (descMatch) {
       description = descMatch[1].trim();
       // Truncate if too long (Discord shows ~200 chars)
