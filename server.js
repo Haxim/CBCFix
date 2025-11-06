@@ -83,9 +83,9 @@ function generateEmbedPage(cbcUrl, urlPath) {
       <iframe src="${cbcUrl}" allowfullscreen></iframe>
     </div>
     <div class="info">
-      <h2>How to use DDCBC</h2>
-      <p>Simply add <strong>dd</strong> before <strong>cbc.ca</strong> in any CBC News URL to get an embeddable version!</p>
-      <div class="url-display">Original: ${cbcUrl}<br>DDCBC: https://ddcbc.ca${urlPath}</div>
+      <h2>How to use OHCBC</h2>
+      <p>Simply add <strong>oh</strong> before <strong>cbc.ca</strong> in any CBC News URL to get an embeddable version!</p>
+      <div class="url-display">Original: ${cbcUrl}<br>OHCBC: https://ohcbc.ca${urlPath}</div>
     </div>
   </div>
   <script>
@@ -99,6 +99,6 @@ function generateEmbedPage(cbcUrl, urlPath) {
 }
 
 app.listen(PORT, () => {
-  console.log('DDCBC server running on port ' + PORT);
+  console.log('OHCBC server running on port ' + PORT);
   console.log('Visit http://localhost:' + PORT);
 });
