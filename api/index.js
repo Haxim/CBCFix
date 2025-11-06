@@ -27,7 +27,9 @@ module.exports = async (req, res) => {
     if (titleMatch) title = titleMatch[1].trim();
     
     // Extract og:description or description (try multiple sources)
-    const descMatch = html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i) ||
+    const descMatch = html.match(/<meta[^>]*data-rh=["']true["'][^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i) ||
+                      html.match(/<meta[^>]*name=["']description["'][^>]*data-rh=["']true["'][^>]*content=["']([^"']+)["']/i) ||
+                      html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i) ||
                       html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i) ||
                       html.match(/<meta[^>]*property=["']twitter:description["'][^>]*content=["']([^"']+)["']/i);
     if (descMatch) {
