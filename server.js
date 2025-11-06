@@ -72,7 +72,7 @@ function generateEmbedPage(cbcUrl, urlPath) {
 </head>
 <body>
   <div class="header">
-    <div class="logo"><span>DD</span>CBC News</div>
+    <div class="logo"><span>OH</span>CBC News</div>
     <div class="actions">
       <a href="${cbcUrl}" target="_blank" class="btn">Open Original</a>
       <button onclick="copyEmbed()" class="btn">Copy Embed Code</button>
