@@ -36,46 +36,111 @@ module.exports = async (req, res) => {
     const response = await fetch(cbcUrl);
     const html = await response.text();
     
-    // Extract title
-    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-    if (titleMatch) title = titleMatch[1].trim();
+    // Extract title - try multiple patterns
+    let titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    if (titleMatch) {
+      title = titleMatch[1].trim();
+      // Clean up common CBC title suffixes
+      title = title.replace(/\s*\|\s*CBC(\s+News)?$/i, '');
+    }
     
-    // Extract description - try multiple patterns
+    // Extract description - comprehensive approach
     let descMatch = null;
+    let foundDescription = false;
     
-    // Pattern 1: data-rh with name="description"
-    descMatch = html.match(/<meta[^>]*data-rh=["']true["'][^>]*name=["']description["'][^>]*content=["']([^"']+)["']/is);
-    
-    if (!descMatch) {
-      // Pattern 2: name="description" with data-rh (reversed order)
-      descMatch = html.match(/<meta[^>]*name=["']description["'][^>]*data-rh=["']true["'][^>]*content=["']([^"']+)["']/is);
-    }
-    
-    if (!descMatch) {
-      // Pattern 3: just name="description" with content
-      descMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/is);
-    }
-    
-    if (!descMatch) {
-      // Pattern 4: og:description
-      descMatch = html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/is);
-    }
-    
-    if (descMatch) {
-      description = descMatch[1].trim();
-      // Truncate if too long (Discord shows ~200 chars)
-      if (description.length > 200) {
-        description = description.substring(0, 197) + '...';
+    // Pattern 1: Try JSON-LD first (for livestory pages)
+    const jsonLdMatch = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([^<]+)<\/script>/is);
+    if (jsonLdMatch) {
+      try {
+        const jsonData = JSON.parse(jsonLdMatch[1]);
+        // Check if it's an array with graph
+        if (jsonData['@graph'] && Array.isArray(jsonData['@graph'])) {
+          for (const item of jsonData['@graph']) {
+            if (item.description && item.description.trim()) {
+              description = item.description.trim();
+              foundDescription = true;
+              break;
+            }
+          }
+        } else if (jsonData.description && jsonData.description.trim()) {
+          description = jsonData.description.trim();
+          foundDescription = true;
+        }
+      } catch (e) {
+        console.error('Error parsing JSON-LD:', e);
       }
+    }
+    
+    // Pattern 2: og:description (if not found in JSON-LD)
+    if (!foundDescription) {
+      descMatch = html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/is);
+      if (descMatch && descMatch[1].trim()) {
+        description = descMatch[1].trim();
+        foundDescription = true;
+      }
+    }
+    
+    // Pattern 3: twitter:description
+    if (!foundDescription) {
+      descMatch = html.match(/<meta[^>]*name=["']twitter:description["'][^>]*content=["']([^"']+)["']/is);
+      if (descMatch && descMatch[1].trim()) {
+        description = descMatch[1].trim();
+        foundDescription = true;
+      }
+    }
+    
+    // Pattern 4: data-rh with name="description"
+    if (!foundDescription) {
+      descMatch = html.match(/<meta[^>]*data-rh=["']true["'][^>]*name=["']description["'][^>]*content=["']([^"']+)["']/is);
+      if (descMatch && descMatch[1].trim()) {
+        description = descMatch[1].trim();
+        foundDescription = true;
+      }
+    }
+    
+    // Pattern 5: name="description" with data-rh (reversed order)
+    if (!foundDescription) {
+      descMatch = html.match(/<meta[^>]*name=["']description["'][^>]*data-rh=["']true["'][^>]*content=["']([^"']+)["']/is);
+      if (descMatch && descMatch[1].trim()) {
+        description = descMatch[1].trim();
+        foundDescription = true;
+      }
+    }
+    
+    // Pattern 6: plain name="description"
+    if (!foundDescription) {
+      descMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/is);
+      if (descMatch && descMatch[1].trim()) {
+        description = descMatch[1].trim();
+        foundDescription = true;
+      }
+    }
+    
+    // Decode HTML entities
+    description = description
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'")
+      .replace(/&#x27;/g, "'")
+      .replace(/&#39;/g, "'")
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>');
+    
+    // Truncate if too long (Discord shows ~200 chars)
+    if (description.length > 200) {
+      description = description.substring(0, 197) + '...';
     }
     
     // Extract og:image
     const imgMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/is);
-    if (!imgMatch) {
-      const twitterImgMatch = html.match(/<meta[^>]*property=["']twitter:image["'][^>]*content=["']([^"']+)["']/is);
-      if (twitterImgMatch) image = twitterImgMatch[1].trim();
-    } else {
+    if (imgMatch) {
       image = imgMatch[1].trim();
+    } else {
+      // Try twitter:image as fallback
+      const twitterImgMatch = html.match(/<meta[^>]*name=["']twitter:image["'][^>]*content=["']([^"']+)["']/is);
+      if (twitterImgMatch) {
+        image = twitterImgMatch[1].trim();
+      }
     }
     
     // If it's a video player, try to extract the actual video file URL
@@ -94,6 +159,7 @@ module.exports = async (req, res) => {
     }
     
     // Debug logging
+    console.log('CBC URL:', cbcUrl);
     console.log('Extracted - Title:', title);
     console.log('Extracted - Description:', description);
     console.log('Extracted - Image:', image);
@@ -106,18 +172,33 @@ module.exports = async (req, res) => {
 };
 
 function generateEmbedPage(cbcUrl, urlPath, title, description, image, isVideoPlayer = false, videoUrl = null) {
+  // Escape HTML entities in meta tags to prevent XSS
+  const escapeHtml = (str) => {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  };
+  
+  const safeTitle = escapeHtml(title);
+  const safeDescription = escapeHtml(description);
+  const safeImage = escapeHtml(image);
+  const safeCbcUrl = escapeHtml(cbcUrl);
+  
   // For video player URLs, use video meta tags
   const metaType = isVideoPlayer ? 'video.other' : 'article';
   const twitterCard = isVideoPlayer ? 'player' : 'summary_large_image';
   
   // For video players with actual video URLs, add video-specific meta tags
   const videoPlayerHtml = (isVideoPlayer && videoUrl) ? `
-    <meta property="og:video" content="${videoUrl}">
-    <meta property="og:video:secure_url" content="${videoUrl}">
+    <meta property="og:video" content="${escapeHtml(videoUrl)}">
+    <meta property="og:video:secure_url" content="${escapeHtml(videoUrl)}">
     <meta property="og:video:type" content="${videoUrl.endsWith('.mp4') ? 'video/mp4' : 'application/x-mpegURL'}">
     <meta property="og:video:width" content="1280">
     <meta property="og:video:height" content="720">
-    <meta name="twitter:player:stream" content="${videoUrl}">
+    <meta name="twitter:player:stream" content="${escapeHtml(videoUrl)}">
     <meta name="twitter:player:stream:content_type" content="${videoUrl.endsWith('.mp4') ? 'video/mp4' : 'application/x-mpegURL'}">
   ` : '';
   
@@ -126,24 +207,24 @@ function generateEmbedPage(cbcUrl, urlPath, title, description, image, isVideoPl
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title}</title>
-  <meta name="description" content="${description}">
-  <link rel="canonical" href="${cbcUrl}">
+  <title>${safeTitle}</title>
+  <meta name="description" content="${safeDescription}">
+  <link rel="canonical" href="${safeCbcUrl}">
   
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="${metaType}">
-  <meta property="og:url" content="${cbcUrl}">
-  <meta property="og:title" content="${title}">
-  <meta property="og:description" content="${description}">
-  <meta property="og:image" content="${image}">
+  <meta property="og:url" content="${safeCbcUrl}">
+  <meta property="og:title" content="${safeTitle}">
+  <meta property="og:description" content="${safeDescription}">
+  <meta property="og:image" content="${safeImage}">
   ${videoPlayerHtml}
   
   <!-- Twitter -->
   <meta property="twitter:card" content="${twitterCard}">
-  <meta property="twitter:url" content="${cbcUrl}">
-  <meta property="twitter:title" content="${title}">
-  <meta property="twitter:description" content="${description}">
-  <meta property="twitter:image" content="${image}">
+  <meta property="twitter:url" content="${safeCbcUrl}">
+  <meta property="twitter:title" content="${safeTitle}">
+  <meta property="twitter:description" content="${safeDescription}">
+  <meta property="twitter:image" content="${safeImage}">
   
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -163,13 +244,13 @@ function generateEmbedPage(cbcUrl, urlPath, title, description, image, isVideoPl
   <div class="header">
     <div class="logo"><span>OH</span>CBC</div>
     <div class="actions">
-      <a href="${cbcUrl}" target="_blank" class="btn">Open Original</a>
+      <a href="${safeCbcUrl}" target="_blank" class="btn">Open Original</a>
       <button onclick="copyEmbed()" class="btn">Copy Embed Code</button>
     </div>
   </div>
   <div class="container">
     <div class="embed-container">
-      <iframe src="${cbcUrl}" allowfullscreen></iframe>
+      <iframe src="${safeCbcUrl}" allowfullscreen></iframe>
     </div>
   </div>
   <script>
