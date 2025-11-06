@@ -100,9 +100,6 @@ function generateEmbedPage(cbcUrl, urlPath, title, description, image) {
   <meta property="twitter:description" content="${description}">
   <meta property="twitter:image" content="${image}">
   
-  <!-- Redirect meta tag -->
-  <meta http-equiv="refresh" content="0;url=${cbcUrl}">
-  
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #1a1a1a; color: #fff; }
@@ -131,6 +128,11 @@ function generateEmbedPage(cbcUrl, urlPath, title, description, image) {
     </div>
   </div>
   <script>
+    // Redirect real users to CBC, but let bots scrape the metadata
+    if (!/bot|crawler|spider|crawling/i.test(navigator.userAgent)) {
+      window.location.href = '${cbcUrl}';
+    }
+    
     function copyEmbed() {
       const embedCode = '<iframe src="' + window.location.href + '" width="100%" height="600" frameborder="0" allowfullscreen></iframe>';
       navigator.clipboard.writeText(embedCode).then(() => { alert('Embed code copied!'); });
