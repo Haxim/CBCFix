@@ -1,6 +1,5 @@
 const express = require('express');
 const path = require('path');
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -16,7 +15,17 @@ app.get('*', (req, res) => {
   const queryString = req.url.includes('?') ? '?' + req.url.split('?')[1] : '';
   const cbcUrl = 'https://www.cbc.ca' + urlPath + queryString;
   
-  res.send(generateEmbedPage(cbcUrl, urlPath));
+  // Check if user agent is a bot
+  const userAgent = req.get('user-agent') || '';
+  const isBot = /bot|crawler|spider|crawling|facebook|twitter|discord|slack|telegram|whatsapp|linkedinbot/i.test(userAgent);
+  
+  // If it's a bot, serve the embed page for scraping
+  if (isBot) {
+    return res.send(generateEmbedPage(cbcUrl, urlPath));
+  }
+  
+  // If it's a real user, redirect to CBC
+  res.redirect(302, cbcUrl);
 });
 
 function generateEmbedPage(cbcUrl, urlPath) {
@@ -26,6 +35,22 @@ function generateEmbedPage(cbcUrl, urlPath) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DDCBC - ${urlPath}</title>
+  <meta name="description" content="View this CBC News article">
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="${cbcUrl}">
+  <meta property="og:title" content="DDCBC - ${urlPath}">
+  <meta property="og:description" content="View this CBC News article">
+  <meta property="og:image" content="https://www.cbc.ca/favicon.ico">
+  
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:url" content="${cbcUrl}">
+  <meta property="twitter:title" content="DDCBC - ${urlPath}">
+  <meta property="twitter:description" content="View this CBC News article">
+  <meta property="twitter:image" content="https://www.cbc.ca/favicon.ico">
+  
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #1a1a1a; color: #fff; }
