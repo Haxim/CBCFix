@@ -31,6 +31,9 @@ module.exports = async (req, res) => {
   let description = 'View this CBC ' + (isVideoPlayer ? 'video' : 'article');
   let image = 'https://www.cbc.ca/favicon.ico';
   
+  // For video players, try to extract the actual video URL
+  let videoUrl = null;
+  
   try {
     const response = await fetch(cbcUrl);
     const html = await response.text();
@@ -38,6 +41,21 @@ module.exports = async (req, res) => {
     // Extract title
     const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
     if (titleMatch) title = titleMatch[1].trim();
+    
+    // If it's a video player, try to extract the actual video file URL
+    if (isVideoPlayer) {
+      // Look for MP4 or M3U8 URLs in the page source
+      const mp4Match = html.match(/"(https?:\/\/[^"]+\.mp4[^"]*)"/i);
+      const m3u8Match = html.match(/"(https?:\/\/[^"]+\.m3u8[^"]*)"/i);
+      
+      if (mp4Match) {
+        videoUrl = mp4Match[1];
+      } else if (m3u8Match) {
+        videoUrl = m3u8Match[1];
+      }
+      
+      console.log('Extracted video URL:', videoUrl);
+    }
     
     // Extract description - try multiple patterns
     let descMatch = null;
@@ -86,24 +104,23 @@ module.exports = async (req, res) => {
   }
   
   res.setHeader('Content-Type', 'text/html');
-  res.send(generateEmbedPage(cbcUrl, urlPath, title, description, image, isVideoPlayer));
+  res.send(generateEmbedPage(cbcUrl, urlPath, title, description, image, isVideoPlayer, videoUrl));
 };
 
-function generateEmbedPage(cbcUrl, urlPath, title, description, image, isVideoPlayer = false) {
+function generateEmbedPage(cbcUrl, urlPath, title, description, image, isVideoPlayer = false, videoUrl = null) {
   // For video player URLs, use video meta tags
   const metaType = isVideoPlayer ? 'video.other' : 'article';
   const twitterCard = isVideoPlayer ? 'player' : 'summary_large_image';
   
-  // For video players, add video-specific meta tags
-  const videoPlayerHtml = isVideoPlayer ? `
-    <meta property="twitter:player" content="${cbcUrl}">
-    <meta property="twitter:player:width" content="1280">
-    <meta property="twitter:player:height" content="720">
-    <meta property="og:video" content="${cbcUrl}">
-    <meta property="og:video:secure_url" content="${cbcUrl}">
-    <meta property="og:video:type" content="text/html">
+  // For video players with actual video URLs, add video-specific meta tags
+  const videoPlayerHtml = (isVideoPlayer && videoUrl) ? `
+    <meta property="og:video" content="${videoUrl}">
+    <meta property="og:video:secure_url" content="${videoUrl}">
+    <meta property="og:video:type" content="${videoUrl.endsWith('.mp4') ? 'video/mp4' : 'application/x-mpegURL'}">
     <meta property="og:video:width" content="1280">
     <meta property="og:video:height" content="720">
+    <meta name="twitter:player:stream" content="${videoUrl}">
+    <meta name="twitter:player:stream:content_type" content="${videoUrl.endsWith('.mp4') ? 'video/mp4' : 'application/x-mpegURL'}">
   ` : '';
   
   return `<!DOCTYPE html>
