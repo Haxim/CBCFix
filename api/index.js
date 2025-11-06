@@ -26,13 +26,21 @@ module.exports = async (req, res) => {
     const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
     if (titleMatch) title = titleMatch[1].trim();
     
-    // Extract og:description or description
+    // Extract og:description or description (try multiple sources)
     const descMatch = html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i) ||
-                      html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i);
-    if (descMatch) description = descMatch[1].trim();
+                      html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i) ||
+                      html.match(/<meta[^>]*property=["']twitter:description["'][^>]*content=["']([^"']+)["']/i);
+    if (descMatch) {
+      description = descMatch[1].trim();
+      // Truncate if too long (Discord shows ~200 chars)
+      if (description.length > 200) {
+        description = description.substring(0, 197) + '...';
+      }
+    }
     
     // Extract og:image
-    const imgMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i);
+    const imgMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) ||
+                     html.match(/<meta[^>]*property=["']twitter:image["'][^>]*content=["']([^"']+)["']/i);
     if (imgMatch) image = imgMatch[1].trim();
   } catch (error) {
     console.error('Error fetching CBC page:', error);
