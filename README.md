@@ -1,10 +1,10 @@
-# DDCBC - CBC News Embed Fixer
+# OHCBC - CBC News Embed Fixer
 
 Just add "dd" before cbc.ca in any CBC News URL to get an embeddable version!
 
 ## Usage
 
-Simply add `dd` before `cbc.ca` in any URL:
+Simply add `OH` before `cbc.ca` in any URL:
 
 ```
 Original: https://www.cbc.ca/news/canada/article-1.123456
@@ -15,7 +15,7 @@ The service will redirect to an embeddable player/viewer for that CBC content.
 
 ## Features
 
-- 🔗 Simple URL prefix - just add "dd"
+- 🔗 Simple URL prefix - just add "oh"
 - 🚀 Automatic redirect to embeddable version
 - 📱 Mobile friendly
 - ⚡ Fast and lightweight
@@ -27,7 +27,7 @@ The service will redirect to an embeddable player/viewer for that CBC content.
 
 1. Fork this repository
 2. Connect to Vercel
-3. Set custom domain to `ddcbc.ca`
+3. Set custom domain to `ohcbc.ca`
 4. Deploy!
 
 ### Manual Deployment
@@ -44,7 +44,7 @@ PORT=3000
 
 ## How It Works
 
-1. User visits `ddcbc.ca/news/article`
+1. User visits `ohcbc.ca/news/article`
 2. Server catches the request
 3. Extracts the path (`/news/article`)
 4. Redirects to embeddable CBC content or generates embed page
