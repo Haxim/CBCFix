@@ -30,8 +30,6 @@ module.exports = async (req, res) => {
   let title = 'CBC News';
   let description = 'View this CBC ' + (isVideoPlayer ? 'video' : 'article');
   let image = 'https://www.cbc.ca/favicon.ico';
-  
-  // For video players, try to extract the actual video URL
   let videoUrl = null;
   
   try {
@@ -41,21 +39,6 @@ module.exports = async (req, res) => {
     // Extract title
     const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
     if (titleMatch) title = titleMatch[1].trim();
-    
-    // If it's a video player, try to extract the actual video file URL
-    if (isVideoPlayer) {
-      // Look for MP4 or M3U8 URLs in the page source
-      const mp4Match = html.match(/"(https?:\/\/[^"]+\.mp4[^"]*)"/i);
-      const m3u8Match = html.match(/"(https?:\/\/[^"]+\.m3u8[^"]*)"/i);
-      
-      if (mp4Match) {
-        videoUrl = mp4Match[1];
-      } else if (m3u8Match) {
-        videoUrl = m3u8Match[1];
-      }
-      
-      console.log('Extracted video URL:', videoUrl);
-    }
     
     // Extract description - try multiple patterns
     let descMatch = null;
@@ -93,6 +76,21 @@ module.exports = async (req, res) => {
       if (twitterImgMatch) image = twitterImgMatch[1].trim();
     } else {
       image = imgMatch[1].trim();
+    }
+    
+    // If it's a video player, try to extract the actual video file URL
+    if (isVideoPlayer) {
+      // Look for MP4 or M3U8 URLs in the page source
+      const mp4Match = html.match(/"(https?:\/\/[^"]+\.mp4[^"]*)"/i);
+      const m3u8Match = html.match(/"(https?:\/\/[^"]+\.m3u8[^"]*)"/i);
+      
+      if (mp4Match) {
+        videoUrl = mp4Match[1];
+      } else if (m3u8Match) {
+        videoUrl = m3u8Match[1];
+      }
+      
+      console.log('Extracted video URL:', videoUrl);
     }
     
     // Debug logging
