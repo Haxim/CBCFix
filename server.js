@@ -18,17 +18,14 @@ app.get('*', (req, res) => {
   
   // Check if user agent is a bot
   const userAgent = req.get('user-agent') || '';
-  const isBot = /bot|crawler|spider|crawling|facebook|twitter|discord|slack|telegram|whatsapp|linkedinbot/i.test(userAgent);
+  const isBrowser = /mozilla/i.test(userAgent);
   
-  // If it's a bot, serve the embed page for scraping
-  //if (isBot) {
-  if (true) {
-    return res.send(generateEmbedPage(cbcUrl, proxyUrl, urlPath));
+  if (isBrowser) {
+    return res.redirect(302, cbcUrl);
   }
   
-  // If it's a real user, redirect to CBC
-  res.redirect(302, cbcUrl);
-});
+  return res.send(generateEmbedPage(cbcUrl, proxyUrl, urlPath));
+  });
 
 function generateEmbedPage(cbcUrl, proxyUrl, urlPath) {
   return `<!DOCTYPE html>
