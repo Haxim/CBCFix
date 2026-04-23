@@ -42,7 +42,7 @@ function generateEmbedPage(cbcUrl, proxyUrl, urlPath) {
   <meta property="og:url" content="${proxyUrl}">
   <meta property="og:title" content="OHCBC - ${urlPath}">
   <meta property="og:description" content="View this CBC News article">
-  <meta property="og:image" content="https://www.cbc.ca/favicon.ico">
+  <meta property="og:image" content="https://ohcbc.ca/social.png">
   
   <!-- Twitter -->
   <meta property="twitter:card" content="summary_large_image">
