@@ -14,6 +14,7 @@ app.get('*', (req, res) => {
   
   const queryString = req.url.includes('?') ? '?' + req.url.split('?')[1] : '';
   const cbcUrl = 'https://www.cbc.ca' + urlPath + queryString;
+  const proxyUrl = 'https://ohcbc.ca' + urlPath + queryString;
   
   // Check if user agent is a bot
   const userAgent = req.get('user-agent') || '';
@@ -21,14 +22,14 @@ app.get('*', (req, res) => {
   
   // If it's a bot, serve the embed page for scraping
   if (isBot) {
-    return res.send(generateEmbedPage(cbcUrl, urlPath));
+    return res.send(generateEmbedPage(cbcUrl, proxyUrl, urlPath));
   }
   
   // If it's a real user, redirect to CBC
   res.redirect(302, cbcUrl);
 });
 
-function generateEmbedPage(cbcUrl, urlPath) {
+function generateEmbedPage(cbcUrl, proxyUrl, urlPath) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -36,17 +37,18 @@ function generateEmbedPage(cbcUrl, urlPath) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>OHCBC - ${urlPath}</title>
   <meta name="description" content="View this CBC News article">
+  <link rel="canonical" href="${proxyUrl}">
   
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="article">
-  <meta property="og:url" content="${cbcUrl}">
+  <meta property="og:url" content="${proxyUrl}">
   <meta property="og:title" content="OHCBC - ${urlPath}">
   <meta property="og:description" content="View this CBC News article">
   <meta property="og:image" content="https://www.cbc.ca/favicon.ico">
   
   <!-- Twitter -->
   <meta property="twitter:card" content="summary_large_image">
-  <meta property="twitter:url" content="${cbcUrl}">
+  <meta property="twitter:url" content="${proxyUrl}">
   <meta property="twitter:title" content="OHCBC - ${urlPath}">
   <meta property="twitter:description" content="View this CBC News article">
   <meta property="twitter:image" content="https://www.cbc.ca/favicon.ico">
