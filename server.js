@@ -18,7 +18,9 @@ app.get('*', (req, res) => {
   
   // Check if user agent is a bot
   const userAgent = req.get('user-agent') || '';
-  const isBrowser = /mozilla/i.test(userAgent);
+  const isBrowser =
+    /mozilla/i.test(userAgent) &&
+    !/discord|bot|crawler|spider|facebookexternalhit|twitterbot|slackbot|telegrambot/i.test(userAgent);
   
   if (isBrowser) {
     return res.redirect(302, cbcUrl);
@@ -49,7 +51,7 @@ function generateEmbedPage(cbcUrl, proxyUrl, urlPath) {
   <meta property="twitter:url" content="${proxyUrl}">
   <meta property="twitter:title" content="OHCBC - ${urlPath}">
   <meta property="twitter:description" content="View this CBC News article">
-  <meta property="twitter:image" content="https://www.cbc.ca/favicon.ico">
+  <meta property="twitter:image" content="https://ohcbc.ca/social.png">
   
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
