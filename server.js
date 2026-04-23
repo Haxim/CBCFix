@@ -21,7 +21,8 @@ app.get('*', (req, res) => {
   const isBot = /bot|crawler|spider|crawling|facebook|twitter|discord|slack|telegram|whatsapp|linkedinbot/i.test(userAgent);
   
   // If it's a bot, serve the embed page for scraping
-  if (isBot) {
+  //if (isBot) {
+  if (true) {
     return res.send(generateEmbedPage(cbcUrl, proxyUrl, urlPath));
   }
   
