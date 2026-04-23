@@ -40,7 +40,7 @@ function generateEmbedPage(cbcUrl, urlPath) {
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="article">
   <meta property="og:url" content="${cbcUrl}">
-  <meta property="og:title" content=OHDCBC - ${urlPath}">
+  <meta property="og:title" content="OHCBC - ${urlPath}">
   <meta property="og:description" content="View this CBC News article">
   <meta property="og:image" content="https://www.cbc.ca/favicon.ico">
   
