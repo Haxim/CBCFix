@@ -21,6 +21,10 @@ app.get('*', (req, res) => {
   const isBrowser =
     /mozilla/i.test(userAgent) &&
     !/discord|bot|crawler|spider|facebookexternalhit|twitterbot|slackbot|telegrambot/i.test(userAgent);
+
+    console.log("UA:", userAgent);
+    console.log("isBrowser:", isBrowser);
+    console.log("PATH:", req.path);
   
   if (isBrowser) {
     return res.redirect(302, cbcUrl);
