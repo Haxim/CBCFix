@@ -18,16 +18,14 @@ module.exports = async (req, res) => {
   
   // Check if user agent is a bot
   const userAgent = req.headers['user-agent'] || '';
-  const isBrowser =
-    /mozilla/i.test(userAgent) &&
-    !/discord|bot|crawler|spider|facebookexternalhit|twitterbot|slackbot|telegrambot/i.test(userAgent);
+  const isBot =
+    /discord|bot|crawler|spider|facebookexternalhit|twitterbot|slackbot|telegrambot|whatsapp/i.test(userAgent);
 
   console.log("UA:", userAgent);
   console.log("isBrowser:", isBrowser);
   console.log("URL:", urlPath);
   
-  // If it's a real user (not a bot), redirect to CBC
-  if (isBrowser) {
+  if (!isBot) {
     res.writeHead(302, { Location: cbcUrl });
     return res.end();
   }
