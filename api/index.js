@@ -238,6 +238,8 @@ function generateEmbedPage(cbcUrl, urlPath, title, description, image, isVideoPl
   const safeDescription = escapeHtml(description);
   const safeImage = escapeHtml(image);
   const safeCbcUrl = escapeHtml(cbcUrl);
+  const proxyUrl = 'https://ohcbc.ca' + urlPath;
+  const safeProxyUrl = escapeHtml(proxyUrl);
   
   // For video player URLs, use video meta tags
   const metaType = isVideoPlayer ? 'video.other' : 'article';
@@ -269,12 +271,12 @@ function generateEmbedPage(cbcUrl, urlPath, title, description, image, isVideoPl
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${safeTitle}</title>
   <meta name="description" content="${safeDescription}">
-  <link rel="canonical" href="${safeCbcUrl}">
+  <link rel="canonical" href="${safeProxyUrl}">
   <link rel="icon" href="${cbcLogoUrl}">
   
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="${metaType}">
-  <meta property="og:url" content="${safeCbcUrl}">
+  <meta property="og:url" content="${safeProxyUrl}">
   <meta property="og:title" content="${safeTitle}">
   <meta property="og:description" content="${safeDescription}">
   <meta property="og:image" content="${safeImage}">
@@ -284,7 +286,7 @@ function generateEmbedPage(cbcUrl, urlPath, title, description, image, isVideoPl
   
   <!-- Twitter -->
   <meta property="twitter:card" content="${twitterCard}">
-  <meta property="twitter:url" content="${safeCbcUrl}">
+  <meta property="twitter:url" content="${safeProxyUrl}">
   <meta property="twitter:title" content="${safeTitle}">
   <meta property="twitter:description" content="${safeDescription}">
   <meta property="twitter:image" content="${safeImage}">
