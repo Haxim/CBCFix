@@ -21,6 +21,10 @@ module.exports = async (req, res) => {
   const isBrowser =
     /mozilla/i.test(userAgent) &&
     !/discord|bot|crawler|spider|facebookexternalhit|twitterbot|slackbot|telegrambot/i.test(userAgent);
+
+  console.log("UA:", userAgent);
+  console.log("isBrowser:", isBrowser);
+  console.log("URL:", urlPath);
   
   // If it's a real user (not a bot), redirect to CBC
   if (isBrowser) {
