@@ -1,335 +1,81 @@
-const path = require('path');
-const fs = require('fs');
+// =============================
+      console.log('Extracted - Image:', image);
+      console.log('Extracted - Published Time:', publishedTime);
+    } catch (fetchError) {
+      console.error('Metadata fetch failed:', fetchError);
+      // fallback metadata is already set above
+    }
 
-module.exports = async (req, res) => {
-  const urlPath = req.url;
-  
-  if (urlPath === '/' || urlPath === '/index.html') {
-    const indexPath = path.join(__dirname, '..', 'public', 'index.html');
-    const html = fs.readFileSync(indexPath, 'utf8');
-    res.setHeader('Content-Type', 'text/html');
-    return res.send(html);
-  }
-  
-  const cbcUrl = 'https://www.cbc.ca' + urlPath;
-  
-  // Check if this is a video player URL
-  const isVideoPlayer = urlPath.startsWith('/player/');
-  
-  // Check if user agent is a bot
-  const userAgent = req.headers['user-agent'] || '';
-  const isBot =
-    /discord|bot|crawler|spider|facebookexternalhit|twitterbot|slackbot|telegrambot|whatsapp/i.test(userAgent);
-
-  console.log("UA:", userAgent);
-  console.log("isBrowser:", isBrowser);
-  console.log("URL:", urlPath);
-  
-  if (!isBot) {
-    res.writeHead(302, { Location: cbcUrl });
-    return res.end();
-  }
-  
-  // If it's a bot, fetch the original CBC page to extract meta tags
-  let title = 'CBC News';
-  let description = 'View this CBC ' + (isVideoPlayer ? 'video' : 'article');
-  let image = 'https://www.cbc.ca/favicon.ico';
-  let videoUrl = null;
-  let publishedTime = null;
-  
-  try {
-    const response = await fetch(cbcUrl);
-    const html = await response.text();
-    
-    // Extract title - try multiple patterns
-    let titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-    if (titleMatch) {
-      title = titleMatch[1].trim();
-      // Clean up common CBC title suffixes
-      title = title.replace(/\s*\|\s*CBC(\s+News)?$/i, '');
-    }
-    
-    // Extract description - comprehensive approach
-    let descMatch = null;
-    let foundDescription = false;
-    
-    // Pattern 1: Try JSON-LD first (for livestory pages)
-    const jsonLdMatch = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([^<]+)<\/script>/is);
-    if (jsonLdMatch) {
-      try {
-        const jsonData = JSON.parse(jsonLdMatch[1]);
-        // Check if it's an array with graph
-        if (jsonData['@graph'] && Array.isArray(jsonData['@graph'])) {
-          for (const item of jsonData['@graph']) {
-            if (item.description && item.description.trim()) {
-              description = item.description.trim();
-              foundDescription = true;
-              break;
-            }
-          }
-        } else if (jsonData.description && jsonData.description.trim()) {
-          description = jsonData.description.trim();
-          foundDescription = true;
-        }
-      } catch (e) {
-        console.error('Error parsing JSON-LD:', e);
-      }
-    }
-    
-    // Pattern 2: og:description (if not found in JSON-LD)
-    if (!foundDescription) {
-      descMatch = html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/is);
-      if (descMatch && descMatch[1].trim()) {
-        description = descMatch[1].trim();
-        foundDescription = true;
-      }
-    }
-    
-    // Pattern 3: twitter:description
-    if (!foundDescription) {
-      descMatch = html.match(/<meta[^>]*name=["']twitter:description["'][^>]*content=["']([^"']+)["']/is);
-      if (descMatch && descMatch[1].trim()) {
-        description = descMatch[1].trim();
-        foundDescription = true;
-      }
-    }
-    
-    // Pattern 4: data-rh with name="description"
-    if (!foundDescription) {
-      descMatch = html.match(/<meta[^>]*data-rh=["']true["'][^>]*name=["']description["'][^>]*content=["']([^"']+)["']/is);
-      if (descMatch && descMatch[1].trim()) {
-        description = descMatch[1].trim();
-        foundDescription = true;
-      }
-    }
-    
-    // Pattern 5: name="description" with data-rh (reversed order)
-    if (!foundDescription) {
-      descMatch = html.match(/<meta[^>]*name=["']description["'][^>]*data-rh=["']true["'][^>]*content=["']([^"']+)["']/is);
-      if (descMatch && descMatch[1].trim()) {
-        description = descMatch[1].trim();
-        foundDescription = true;
-      }
-    }
-    
-    // Pattern 6: plain name="description"
-    if (!foundDescription) {
-      descMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/is);
-      if (descMatch && descMatch[1].trim()) {
-        description = descMatch[1].trim();
-        foundDescription = true;
-      }
-    }
-    
-    // Decode HTML entities
-    description = description
-      .replace(/&quot;/g, '"')
-      .replace(/&apos;/g, "'")
-      .replace(/&#x27;/g, "'")
-      .replace(/&#39;/g, "'")
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>');
-    
-    // Truncate if too long (Discord shows ~200 chars)
-    if (description.length > 200) {
-      description = description.substring(0, 197) + '...';
-    }
-    
-    // Extract og:image
-    const imgMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/is);
-    if (imgMatch) {
-      image = imgMatch[1].trim();
-    } else {
-      // Try twitter:image as fallback
-      const twitterImgMatch = html.match(/<meta[^>]*name=["']twitter:image["'][^>]*content=["']([^"']+)["']/is);
-      if (twitterImgMatch) {
-        image = twitterImgMatch[1].trim();
-      }
-    }
-    
-    // If it's a video player, try to extract the actual video file URL
-    if (isVideoPlayer) {
-      // Look for MP4 or M3U8 URLs in the page source
-      const mp4Match = html.match(/"(https?:\/\/[^"]+\.mp4[^"]*)"/i);
-      const m3u8Match = html.match(/"(https?:\/\/[^"]+\.m3u8[^"]*)"/i);
-      
-      if (mp4Match) {
-        videoUrl = mp4Match[1];
-      } else if (m3u8Match) {
-        videoUrl = m3u8Match[1];
-      }
-      
-      console.log('Extracted video URL:', videoUrl);
-    }
-    
-    // Extract publication date/time
-    // Try multiple patterns for publication date
-    let dateMatch = null;
-    
-    // Pattern 1: article:published_time (Open Graph)
-    dateMatch = html.match(/<meta[^>]*property=["']article:published_time["'][^>]*content=["']([^"']+)["']/is);
-    if (dateMatch) {
-      publishedTime = dateMatch[1].trim();
-    }
-    
-    // Pattern 2: datePublished in JSON-LD
-    if (!publishedTime && jsonLdMatch) {
-      try {
-        const jsonData = JSON.parse(jsonLdMatch[1]);
-        if (jsonData['@graph'] && Array.isArray(jsonData['@graph'])) {
-          for (const item of jsonData['@graph']) {
-            if (item.datePublished) {
-              publishedTime = item.datePublished;
-              break;
-            }
-          }
-        } else if (jsonData.datePublished) {
-          publishedTime = jsonData.datePublished;
-        }
-      } catch (e) {
-        // Already logged above
-      }
-    }
-    
-    // Pattern 3: datePublished in a separate JSON-LD script
-    if (!publishedTime) {
-      const allJsonLd = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([^<]+)<\/script>/gis);
-      if (allJsonLd) {
-        for (const match of allJsonLd) {
-          const jsonContent = match.match(/>([^<]+)</s);
-          if (jsonContent) {
-            try {
-              const jsonData = JSON.parse(jsonContent[1]);
-              if (jsonData.datePublished) {
-                publishedTime = jsonData.datePublished;
-                break;
-              }
-            } catch (e) {
-              // Skip invalid JSON
-            }
-          }
-        }
-      }
-    }
-    
-    // Debug logging
-    console.log('CBC URL:', cbcUrl);
-    console.log('Extracted - Title:', title);
-    console.log('Extracted - Description:', description);
-    console.log('Extracted - Image:', image);
-    console.log('Extracted - Published Time:', publishedTime);
+    return res.status(200).send(
+      generateEmbedPage({
+        cbcUrl,
+        proxyUrl,
+        urlPath,
+        title,
+        description,
+        image,
+        publishedTime
+      })
+    );
   } catch (error) {
-    console.error('Error fetching CBC page:', error);
+    console.error('FATAL ERROR:', error);
+    return res.status(500).send('Internal Server Error');
   }
-  
-  res.setHeader('Content-Type', 'text/html');
-  res.send(generateEmbedPage(cbcUrl, urlPath, title, description, image, isVideoPlayer, videoUrl, publishedTime));
 };
 
-function generateEmbedPage(cbcUrl, urlPath, title, description, image, isVideoPlayer = false, videoUrl = null, publishedTime = null) {
-  // Escape HTML entities in meta tags to prevent XSS
-  const escapeHtml = (str) => {
-    return str
+function generateEmbedPage({
+  cbcUrl,
+  proxyUrl,
+  urlPath,
+  title,
+  description,
+  image,
+  publishedTime
+}) {
+  const escapeHtml = (str = '') =>
+    String(str)
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  };
-  
+      .replace(/'/g, '&#39;');
+
   const safeTitle = escapeHtml(title);
   const safeDescription = escapeHtml(description);
   const safeImage = escapeHtml(image);
   const safeCbcUrl = escapeHtml(cbcUrl);
-  const proxyUrl = 'https://ohcbc.ca' + urlPath;
   const safeProxyUrl = escapeHtml(proxyUrl);
-  
-  // For video player URLs, use video meta tags
-  const metaType = isVideoPlayer ? 'video.other' : 'article';
-  const twitterCard = isVideoPlayer ? 'player' : 'summary_large_image';
-  
-  // For video players with actual video URLs, add video-specific meta tags
-  const videoPlayerHtml = (isVideoPlayer && videoUrl) ? `
-    <meta property="og:video" content="${escapeHtml(videoUrl)}">
-    <meta property="og:video:secure_url" content="${escapeHtml(videoUrl)}">
-    <meta property="og:video:type" content="${videoUrl.endsWith('.mp4') ? 'video/mp4' : 'application/x-mpegURL'}">
-    <meta property="og:video:width" content="1280">
-    <meta property="og:video:height" content="720">
-    <meta name="twitter:player:stream" content="${escapeHtml(videoUrl)}">
-    <meta name="twitter:player:stream:content_type" content="${videoUrl.endsWith('.mp4') ? 'video/mp4' : 'application/x-mpegURL'}">
-  ` : '';
-  
-  // Add published time meta tags if available
-  const publishedTimeHtml = publishedTime ? `
-    <meta property="article:published_time" content="${escapeHtml(publishedTime)}">
-  ` : '';
-  
-  // Use CBC's official logo URL for Discord embeds
-  const cbcLogoUrl = 'https://www.cbc.ca/static_images/cbc-logo.png';
-  
+  const safePublishedTime = escapeHtml(publishedTime);
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>${safeTitle}</title>
   <meta name="description" content="${safeDescription}">
   <link rel="canonical" href="${safeProxyUrl}">
-  <link rel="icon" href="${cbcLogoUrl}">
-  
-  <!-- Open Graph / Facebook -->
-  <meta property="og:type" content="${metaType}">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="article">
   <meta property="og:url" content="${safeProxyUrl}">
   <meta property="og:title" content="${safeTitle}">
   <meta property="og:description" content="${safeDescription}">
   <meta property="og:image" content="${safeImage}">
-  <meta property="og:site_name" content="CBC">
-  ${publishedTimeHtml}
-  ${videoPlayerHtml}
-  
+  ${safePublishedTime ? `<meta property="article:published_time" content="${safePublishedTime}">` : ''}
+
   <!-- Twitter -->
-  <meta property="twitter:card" content="${twitterCard}">
-  <meta property="twitter:url" content="${safeProxyUrl}">
-  <meta property="twitter:title" content="${safeTitle}">
-  <meta property="twitter:description" content="${safeDescription}">
-  <meta property="twitter:image" content="${safeImage}">
-  <meta property="twitter:site" content="@CBC">
-  <meta property="twitter:creator" content="@CBC">
-  
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #1a1a1a; color: #fff; }
-    .header { background: #c00; padding: 1rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
-    .logo { font-size: 1.5rem; font-weight: bold; display: flex; align-items: center; gap: 0.5rem; }
-    .logo span { background: #fff; color: #c00; padding: 0.25rem 0.5rem; border-radius: 4px; }
-    .actions { display: flex; gap: 1rem; }
-    .btn { background: #fff; color: #c00; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; text-decoration: none; font-weight: 600; transition: all 0.2s; }
-    .container { max-width: 1400px; margin: 2rem auto; padding: 0 1rem; }
-    .embed-container { background: #2a2a2a; border-radius: 8px; overflow: hidden; }
-    iframe { width: 100%; height: 80vh; border: none; display: block; }
-    @media (max-width: 768px) { .actions { flex-direction: column; gap: 0.5rem; } }
-  </style>
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="${safeProxyUrl}">
+  <meta name="twitter:title" content="${safeTitle}">
+  <meta name="twitter:description" content="${safeDescription}">
+  <meta name="twitter:image" content="${safeImage}">
+
+  <meta http-equiv="refresh" content="0; url=${safeCbcUrl}">
 </head>
 <body>
-  <div class="header">
-    <div class="logo"><span>OH</span>CBC</div>
-    <div class="actions">
-      <a href="${safeCbcUrl}" target="_blank" class="btn">Open Original</a>
-      <button onclick="copyEmbed()" class="btn">Copy Embed Code</button>
-    </div>
-  </div>
-  <div class="container">
-    <div class="embed-container">
-      <iframe src="${safeCbcUrl}" allowfullscreen></iframe>
-    </div>
-  </div>
-  <script>
-    function copyEmbed() {
-      const embedCode = '<iframe src="' + window.location.href + '" width="100%" height="600" frameborder="0" allowfullscreen></iframe>';
-      navigator.clipboard.writeText(embedCode).then(() => { alert('Embed code copied!'); });
-    }
-  </script>
+  <p>Redirecting to <a href="${safeCbcUrl}">CBC article</a>...</p>
 </body>
 </html>`;
 }
