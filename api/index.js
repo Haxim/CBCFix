@@ -1,12 +1,4 @@
-// =============================
-      console.log('Extracted - Image:', image);
-      console.log('Extracted - Published Time:', publishedTime);
-    } catch (fetchError) {
-      console.error('Metadata fetch failed:', fetchError);
-      // fallback metadata is already set above
-    }
-
-    return res.status(200).send(
+module.exports = async (req, res) => {
       generateEmbedPage({
         cbcUrl,
         proxyUrl,
