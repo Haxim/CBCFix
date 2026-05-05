@@ -1,61 +1,39 @@
 # OHCBC - CBC News Embed Fixer
 
-Just add "dd" before cbc.ca in any CBC News URL to get an embeddable version!
+OHCBC is a single-file Cloudflare Worker. Add `oh` before `cbc.ca` in a CBC News URL to get social embed metadata that works better in chat apps.
 
-## Usage
+## Cloudflare Web Editor
 
-Simply add `OH` before `cbc.ca` in any URL:
+1. Open Cloudflare Workers.
+2. Create or edit a Worker.
+3. Paste the contents of `worker.js` into the Cloudflare editor.
+4. Deploy.
+5. Add a route or custom domain such as `ohcbc.ca/*` or `www.ohcbc.ca/*`.
 
-```
-Original: https://www.cbc.ca/news/canada/article-1.123456
-Fixed:    https://www.ohcbc.ca/news/canada/article-1.123456
-```
+No Vercel API routes, Express server, Docker image, or static asset upload is required.
 
-The service will redirect to an embeddable player/viewer for that CBC content.
-
-## Features
-
-- 🔗 Simple URL prefix - just add "oh"
-- 🚀 Automatic redirect to embeddable version
-- 📱 Mobile friendly
-- ⚡ Fast and lightweight
-- 🎯 Works with all CBC News URLs
-
-## Deployment
-
-### Vercel (Recommended)
-
-1. Fork this repository
-2. Connect to Vercel
-3. Set custom domain to `ohcbc.ca`
-4. Deploy!
-
-### Manual Deployment
+## Local Development
 
 ```bash
 npm install
-npm start
+npm run dev
 ```
 
-Set environment variable:
+## Deployment From This Repo
+
+```bash
+npm run deploy
 ```
-PORT=3000
-```
+
+`wrangler.jsonc` points directly at `worker.js`, so the CLI deploys the same code that you can paste into Cloudflare's web editor.
 
 ## How It Works
 
-1. User visits `ohcbc.ca/news/article`
-2. Server catches the request
-3. Extracts the path (`/news/article`)
-4. Redirects to embeddable CBC content or generates embed page
-5. User sees embeddable version
-
-## Contributing
-
-PRs welcome! Please feel free to submit improvements.
+1. Browser requests redirect to the matching `https://www.cbc.ca/...` URL.
+2. Crawler requests fetch the CBC article HTML and extract Open Graph or Twitter metadata.
+3. CBC article images are proxied through the Worker at `/__image` so link preview clients can fetch them reliably.
+4. The Worker returns lightweight HTML with the copied metadata and a refresh redirect to CBC.
 
 ## License
 
 MIT
-
-bump to wake up vercel
